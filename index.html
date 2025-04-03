@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mar Hiperrealista en A-Frame con Ciclo Día-Noche</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+    <!-- Entorno 3d -->
     <script>
         // Componente personalizado para el agua animada que sigue al jugador
         AFRAME.registerComponent('endless-water', {
@@ -274,7 +275,7 @@
                 this.sun = document.querySelector('#sun');
                 this.moon = document.querySelector('#moon');
                 this.ambient = document.querySelector('#ambient-light');
-                
+
                 // Guardamos las referencias a las entidades de agua en el init
                 this.water = [];
                 document.querySelectorAll('[endless-water]').forEach(waterEl => {
@@ -316,14 +317,14 @@
                 // Inicializar tiempo del ciclo - podemos empezar en cualquier punto
                 // Para evitar el problema, comenzar a media mañana
                 this.time = this.data.cycleDuration * 0.25; // 25% del ciclo (media mañana)
-                
+
                 // Necesitamos un contexto para bindear el método
                 const self = this;
-                
+
                 // Iniciar el starfield después de que la escena esté completamente cargada
-                this.el.sceneEl.addEventListener('loaded', function() {
+                this.el.sceneEl.addEventListener('loaded', function () {
                     self.initStarfield();
-                    
+
                     // Asegurar que tenemos referencia a todas las entidades de agua
                     setTimeout(() => {
                         self.water = [];
@@ -332,7 +333,7 @@
                                 self.water.push(waterEl);
                             }
                         });
-                        
+
                         // Aplicar colores iniciales basados en la hora de inicio
                         const initialTime = self.time / self.data.cycleDuration;
                         self.updateEnvironmentColors(initialTime);
@@ -341,105 +342,105 @@
                     }, 1000);
                 });
             },
-            initStarfield: function() {
+            initStarfield: function () {
                 // Crear estrellas aleatorias
                 this.starfield = document.querySelector('#starfield');
-                
+
                 // Eliminar estrellas existentes si las hay
                 while (this.starfield.firstChild) {
                     this.starfield.removeChild(this.starfield.firstChild);
                 }
-                
+
                 // Crear 300 estrellas (aumentado de 200 para mayor visibilidad)
                 for (let i = 0; i < 300; i++) {
                     let star = document.createElement('a-sphere');
-                    
+
                     // Posición aleatoria en una esfera
                     let phi = Math.random() * Math.PI * 2;
                     let theta = Math.random() * Math.PI;
                     let radius = 500; // Radio grande para el cielo
-                    
+
                     let x = radius * Math.sin(theta) * Math.cos(phi);
                     let y = radius * Math.sin(theta) * Math.sin(phi);
                     let z = radius * Math.cos(theta);
-                    
+
                     // Tamaño y color aleatorio para las estrellas
                     let size = Math.random() * 0.7 + 0.2; // Estrellas ligeramente más grandes
                     let brightness = Math.random() * 0.5 + 0.5;
-                    let color = `rgb(${255*brightness}, ${255*brightness}, ${255*brightness})`;
-                    
+                    let color = `rgb(${255 * brightness}, ${255 * brightness}, ${255 * brightness})`;
+
                     star.setAttribute('position', `${x} ${y} ${z}`);
                     star.setAttribute('radius', size);
                     star.setAttribute('color', color);
                     star.setAttribute('material', 'shader: flat; opacity: 0');
                     star.setAttribute('class', 'star');
-                    
+
                     this.starfield.appendChild(star);
                 }
             },
-            lerp: function(a, b, t) {
+            lerp: function (a, b, t) {
                 // Interpolación lineal para transiciones suaves
                 return a + (b - a) * t;
             },
-            lerpColor: function(color1, color2, t) {
+            lerpColor: function (color1, color2, t) {
                 // Interpolar entre dos colores hex
                 const c1 = new THREE.Color(`#${color1}`);
                 const c2 = new THREE.Color(`#${color2}`);
-                
+
                 const r = this.lerp(c1.r, c2.r, t);
                 const g = this.lerp(c1.g, c2.g, t);
                 const b = this.lerp(c1.b, c2.b, t);
-                
+
                 return new THREE.Color(r, g, b).getHexString();
             },
             tick: function (time, deltaTime) {
                 const dt = deltaTime / 1000;
                 this.time = (this.time + dt) % this.data.cycleDuration;
-                
+
                 // Normalizar el tiempo a [0,1] donde 0 es el amanecer y 0.5 es el atardecer
                 const normalizedTime = this.time / this.data.cycleDuration;
-                
+
                 // Posición del sol y la luna
                 this.updateCelestialBodies(normalizedTime);
-                
+
                 // Actualizar colores del cielo, agua y niebla
                 this.updateEnvironmentColors(normalizedTime);
-                
+
                 // Actualizar visibilidad de estrellas
                 this.updateStars(normalizedTime);
             },
-            updateCelestialBodies: function(normalizedTime) {
+            updateCelestialBodies: function (normalizedTime) {
                 // Calcular posición del sol y la luna
                 const sunAngle = normalizedTime * Math.PI * 2;
                 const moonAngle = (normalizedTime + 0.5) % 1 * Math.PI * 2;
-                
+
                 // Altura máxima de 300
                 const sunY = 300 * Math.sin(sunAngle);
                 const moonY = 300 * Math.sin(moonAngle);
-                
+
                 // Posición X/Z para movimiento en arco
                 const sunX = 300 * Math.cos(sunAngle);
                 const moonX = 300 * Math.cos(moonAngle);
-                
+
                 // Actualizar posiciones
                 this.sun.setAttribute('position', `${sunX} ${sunY} 0`);
                 this.moon.setAttribute('position', `${moonX} ${moonY} 0`);
-                
+
                 // Calcular intensidades
                 const sunIntensity = Math.max(0, Math.sin(sunAngle));
                 const moonIntensity = 0.2 * Math.max(0, Math.sin(moonAngle));
-                
+
                 // Actualizar luces
                 this.sun.setAttribute('light', `type: directional; intensity: ${sunIntensity}; castShadow: true`);
                 this.moon.setAttribute('light', `type: directional; intensity: ${moonIntensity}; castShadow: false`);
-                
+
                 // Luz ambiental - más brillante durante el día, tenue en la noche
                 const ambientIntensity = 0.2 + Math.max(0, Math.sin(sunAngle)) * 0.5;
                 this.ambient.setAttribute('light', `intensity: ${ambientIntensity}`);
-                
+
                 // Actualizar colores del sol y luna basados en el momento del día
                 let sunColor, moonColor;
-                
+
                 if (normalizedTime < 0.25) { // Amanecer
                     const t = normalizedTime / 0.25;
                     sunColor = this.lerpColor(this.sunColors.dawn, this.sunColors.day, t);
@@ -449,17 +450,17 @@
                 } else { // Noche
                     sunColor = this.sunColors.night;
                 }
-                
+
                 // Luna más brillante en la noche
                 const isNight = (normalizedTime > 0.75 || normalizedTime < 0.25);
                 moonColor = isNight ? this.moonColors.night : this.moonColors.day;
-                
+
                 this.sun.setAttribute('color', `#${sunColor}`);
                 this.moon.setAttribute('color', `#${moonColor}`);
             },
-            updateEnvironmentColors: function(normalizedTime) {
+            updateEnvironmentColors: function (normalizedTime) {
                 let skyColor, waterColor;
-                
+
                 // Definir puntos clave del ciclo para una transición suave
                 const keyPoints = [
                     { time: 0.0, sky: this.skyColors.night, water: this.waterColors.night },
@@ -470,11 +471,11 @@
                     { time: 0.7, sky: this.skyColors.night, water: this.waterColors.night },
                     { time: 1.0, sky: this.skyColors.night, water: this.waterColors.night }
                 ];
-                
+
                 // Encontrar los dos puntos clave entre los que estamos
                 let startPoint = keyPoints[keyPoints.length - 1];
                 let endPoint = keyPoints[0];
-                
+
                 for (let i = 0; i < keyPoints.length - 1; i++) {
                     if (normalizedTime >= keyPoints[i].time && normalizedTime < keyPoints[i + 1].time) {
                         startPoint = keyPoints[i];
@@ -482,37 +483,37 @@
                         break;
                     }
                 }
-                
+
                 // Calcular el factor de interpolación entre estos dos puntos
                 const segmentDuration = endPoint.time - startPoint.time;
-                const segmentProgress = segmentDuration > 0 ? 
+                const segmentProgress = segmentDuration > 0 ?
                     (normalizedTime - startPoint.time) / segmentDuration : 0;
-                
+
                 // Interpolar colores
                 skyColor = this.lerpColor(startPoint.sky, endPoint.sky, segmentProgress);
                 waterColor = this.lerpColor(startPoint.water, endPoint.water, segmentProgress);
-                
+
                 // Actualizar colores
                 this.sky.setAttribute('material', `color: #${skyColor}`);
-                
+
                 // Actualizar color del agua en todos los componentes water
                 if (this.water && this.water.length > 0) {
                     this.water.forEach(waterEl => {
-                        if (waterEl.components && waterEl.components['endless-water'] && 
+                        if (waterEl.components && waterEl.components['endless-water'] &&
                             waterEl.components['endless-water'].material) {
                             waterEl.components['endless-water'].material.color.set(`#${waterColor}`);
                         }
                     });
                 }
             },
-            updateStars: function(normalizedTime) {
+            updateStars: function (normalizedTime) {
                 // Estrellas visibles solo durante la noche
                 const stars = document.querySelectorAll('.star');
                 if (!stars || stars.length === 0) return;
-                
+
                 // Calcular opacidad: visible en la noche, invisible en el día
                 let opacity = 0;
-                
+
                 if (normalizedTime > 0.7 || normalizedTime < 0.1) {
                     // Noche completa - estrellas totalmente visibles
                     opacity = 1;
@@ -523,7 +524,7 @@
                     // Transición al amanecer - desaparecen gradualmente
                     opacity = 1 - (normalizedTime - 0.1) / 0.1;
                 }
-                
+
                 // Aplicar opacidad a todas las estrellas
                 stars.forEach(star => {
                     // Añadir un parpadeo sutil a las estrellas
@@ -533,36 +534,237 @@
             }
         });
     </script>
+
+<!-- contol ship -->
+  <script>
+    AFRAME.registerComponent('boat-controls', {
+      init: function () {
+        this.boat = document.querySelector('#boat');
+        this.speed = 0;
+        this.targetSpeed = 0;
+        this.maxSpeed = 0.1;
+        this.speedLevels = [
+          -0.1, -0.08, -0.06, -0.04, -0.02,
+          0,
+          0.02, 0.04, 0.06, 0.08, 0.1
+        ];
+        this.currentSpeedIndex = 5;
+
+        this.rotationSpeed = 0;
+        this.targetRotation = 0;
+        this.maxRotation = 0.6;
+        this.initialY = this.boat.getAttribute('position').y;
+        this.time = 0;
+
+        document.querySelector('#forward-button').addEventListener('click', () => {
+          this.currentSpeedIndex = Math.min(this.currentSpeedIndex + 1, this.speedLevels.length - 1);
+          this.targetSpeed = this.speedLevels[this.currentSpeedIndex];
+          this.updateSpeedDisplay();
+        });
+
+        document.querySelector('#backward-button').addEventListener('click', () => {
+          this.currentSpeedIndex = Math.max(this.currentSpeedIndex - 1, 0);
+          this.targetSpeed = this.speedLevels[this.currentSpeedIndex];
+          this.updateSpeedDisplay();
+        });
+
+        document.querySelector('#left-button').addEventListener('click', () => {
+          this.targetRotation = -this.maxRotation;
+        });
+
+        document.querySelector('#right-button').addEventListener('click', () => {
+          this.targetRotation = this.maxRotation;
+        });
+      },
+
+      tick: function (time, deltaTime) {
+        if (this.speed !== this.targetSpeed) {
+          this.speed = this.moveTowards(this.speed, this.targetSpeed, 0.001);
+        }
+
+        if (this.rotationSpeed !== this.targetRotation) {
+          this.rotationSpeed = this.moveTowards(this.rotationSpeed, this.targetRotation, 0.01);
+        } else {
+          this.targetRotation = this.moveTowards(this.targetRotation, 0, 0.01);
+        }
+
+        this.time += 0.01;
+        const position = this.boat.getAttribute('position');
+        position.y = this.initialY + Math.sin(this.time) * 0;
+
+        if (this.speed !== 0) {
+          const rotation = this.boat.getAttribute('rotation');
+          const angle = rotation.y * Math.PI / 180;
+
+          position.x += this.speed * Math.sin(angle);
+          position.z += this.speed * Math.cos(angle);
+
+          rotation.y += this.rotationSpeed;
+          rotation.z = -this.rotationSpeed * 6;
+          this.boat.setAttribute('rotation', rotation);
+        }
+
+        this.boat.setAttribute('position', position);
+      },
+
+      updateSpeedDisplay: function () {
+        const forwardText = document.querySelector('#forward-button').querySelector('a-text');
+        const backwardText = document.querySelector('#backward-button').querySelector('a-text');
+
+        const speedPercent = Math.abs(this.targetSpeed / this.maxSpeed * 100).toFixed(0);
+        if (this.targetSpeed > 0) {
+          forwardText.setAttribute('value', `Avanzar ${speedPercent}%`);
+          backwardText.setAttribute('value', 'Retroceder');
+        } else if (this.targetSpeed < 0) {
+          backwardText.setAttribute('value', `Retroceder ${speedPercent}%`);
+          forwardText.setAttribute('value', 'Avanzar');
+        } else {
+          forwardText.setAttribute('value', 'Avanzar');
+          backwardText.setAttribute('value', 'Retroceder');
+        }
+      },
+
+      moveTowards: function (current, target, step) {
+        if (Math.abs(current - target) <= step) {
+          return target;
+        }
+        if (current < target) {
+          return current + step;
+        }
+        return current - step;
+      }
+    });
+  </script>
+
+    <!-- movement -->
+  <script>
+    AFRAME.registerComponent('boat-side-wobble', {
+      schema: {
+        maxAngle: { type: 'number', default: 5 }, // Ángulo máximo de inclinación en grados
+        speedX: { type: 'number', default: 0.3 }, // Velocidad del bamboleo en el eje X
+        speedZ: { type: 'number', default: 0.3 }  // Velocidad del bamboleo en el eje Z
+      },
+
+      init: function () {
+        this.boat = this.el; // Esta componente se aplica directamente al barco
+        this.time = 0;
+        this.originalRotation = {
+          x: this.boat.getAttribute('rotation').x,
+          y: this.boat.getAttribute('rotation').y,
+          z: this.boat.getAttribute('rotation').z
+        };
+      },
+
+      tick: function (time, deltaTime) {
+        // Asegurarnos de que deltaTime es un valor válido
+        deltaTime = deltaTime || 16;
+
+        // Incrementar el tiempo para las funciones sinusoidales
+        this.time += deltaTime / 1000;
+
+        // Obtener la rotación actual
+        const currentRotation = this.boat.getAttribute('rotation');
+
+        // Calcular el bamboleo usando senos y cosenos desfasados para movimiento más orgánico
+        // Limitar a +/- maxAngle grados (5 por defecto)
+        const wobbleZ = Math.sin(this.time * this.data.speedZ) * this.data.maxAngle;
+
+        // También añadimos un ligero cabeceo (eje X) para más realismo
+        const wobbleX = Math.cos(this.time * this.data.speedX) * (this.data.maxAngle * 0.5);
+
+        // Preservar la rotación Y (dirección controlada por usuario)
+        // mientras añadimos bamboleo a X (cabeceo) y Z (balanceo)
+        const newRotation = {
+          x: wobbleX,
+          y: currentRotation.y, // Mantener dirección controlada por el usuario
+          z: wobbleZ
+        };
+
+        // Si el boat-controls está manipulando la rotación Z, podemos mezclarlo
+        // En lugar de sobreescribir completamente, podríamos añadir nuestro wobble:
+        // newRotation.z = currentRotation.z + wobbleZ;
+
+        this.boat.setAttribute('rotation', newRotation);
+      }
+    });
+  </script>
 </head>
 
 <body>
     <a-scene>
+        <!-- Sistema de mosaicos de agua para "mar infinito" -->
+        <a-entity water-tiles="tileSize: 200; tilesPerSide: 2"></a-entity>
+
+        <!-- Iluminación -->
+        <a-entity id="sun" light="type: directional; intensity: 1; castShadow: true" position="50 50 0" color="#FFFF00"
+            scale="5 5 5"></a-entity>
+        <a-entity id="moon" light="type: directional; intensity: 0; castShadow: false" position="-50 -50 0"
+            color="#E6E6FA" scale="3 3 3"></a-entity>
+        <a-entity id="ambient-light" light="type: ambient; intensity: 0.5" color="#FFFFFF"></a-entity>
+
+
+        <!-- Cielo -->
+        <a-entity id="sky" geometry="primitive: sphere; radius: 500" material="shader: flat; side: back; color: #87CEEB"
+            scale="1 1 1"></a-entity>
+
+        <!-- Contenedor para estrellas -->
+        <a-entity id="starfield"></a-entity>
+
+        <!-- Activar ciclo día-noche -->
+        <a-entity realistic-day-night-cycle="cycleDuration: 90"></a-entity>
+
         <!-- Control de cámara para movimiento -->
         <a-entity id="rig" position="0 2 0" water-movement>
             <a-camera look-controls wasd-controls="enabled: false"></a-camera>
         </a-entity>
 
-        <!-- Sistema de mosaicos de agua para "mar infinito" -->
-        <a-entity water-tiles="tileSize: 200; tilesPerSide: 2"></a-entity>
-
-        <!-- Iluminación -->
-        <a-entity id="sun" light="type: directional; intensity: 1; castShadow: true" position="50 50 0" color="#FFFF00" scale="5 5 5"></a-entity>
-        <a-entity id="moon" light="type: directional; intensity: 0; castShadow: false" position="-50 -50 0" color="#E6E6FA" scale="3 3 3"></a-entity>
-        <a-entity id="ambient-light" light="type: ambient; intensity: 0.5" color="#FFFFFF"></a-entity>
-
-        <!-- Cielo -->
-        <a-entity id="sky" geometry="primitive: sphere; radius: 500" material="shader: flat; side: back; color: #87CEEB" scale="1 1 1"></a-entity>
-        
-        <!-- Contenedor para estrellas -->
-        <a-entity id="starfield"></a-entity>
-
         <!-- Instrucciones -->
         <a-entity position="0 0.2 -1"
             text="align: center; width: 2; color: white; value: Usa WASD o flechas para moverte\nMueve el ratón para mirar">
         </a-entity>
+        <a-box width="2" height="2" depth="2" color="#000fff" position="0 0 0" material="roughness: 1">
+            <a-box width="2" height="2" depth="2" color="#000fff" position="5 0 5" material="roughness: 1">
 
-        <!-- Activar ciclo día-noche -->
-        <a-entity realistic-day-night-cycle="cycleDuration: 90"></a-entity>
+                <a-entity id="boat" position="0 1 -5" boat-controls boat-side-wobble="maxAngle: 5" boat-compass>
+                    <a-box width="3" height="1" depth="6" color="#8B4513" position="0 0 0"></a-box>
+                    <a-box width="2" height="0.5" depth="4" color="#DEB887" position="0 0.75 0"></a-box>
+                    <a-cylinder height="5" radius="0.1" color="#8B4513" position="0 3 0"></a-cylinder>
+                    <a-plane width="2" height="4" color="white" position="0 3 0" rotation="0 90 0"></a-plane>
+                    <!-- controles -->
+                    <a-entity position="0 1.5 2">
+                      <a-cylinder id="forward-button" position="-0.5 0 0" height="0.3" radius="0.3" color="green"
+                        class="clickable" cursor-listener
+                        animation__mouseenter="property: material.color; type: color; to: #2ECC71; startEvents: mouseenter; dur: 200"
+                        animation__mouseleave="property: material.color; type: color; to: green; startEvents: mouseleave; dur: 200">
+                        <a-text value="Avanzar" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
+                      </a-cylinder>
+                      <a-cylinder id="backward-button" position="0.5 0 0" height="0.3" radius="0.3" color="red" class="clickable"
+                        cursor-listener
+                        animation__mouseenter="property: material.color; type: color; to: #E74C3C; startEvents: mouseenter; dur: 200"
+                        animation__mouseleave="property: material.color; type: color; to: red; startEvents: mouseleave; dur: 200">
+                        <a-text value="Retroceder" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
+                      </a-cylinder>
+                      <a-cylinder id="left-button" position="-0.5 0.5 0" height="0.3" radius="0.3" color="blue" class="clickable"
+                        cursor-listener
+                        animation__mouseenter="property: material.color; type: color; to: #3498DB; startEvents: mouseenter; dur: 200"
+                        animation__mouseleave="property: material.color; type: color; to: blue; startEvents: mouseleave; dur: 200">
+                        <a-text value="Izquierda" position="0 0.3 0.2" scale="0.5 0.5 0.5" align="center"></a-text>
+                      </a-cylinder>
+                      <a-cylinder id="right-button" position="0.5 0.5 0" height="0.3" radius="0.3" color="blue" class="clickable"
+                        cursor-listener
+                        animation__mouseenter="property: material.color; type: color; to: #3498DB; startEvents: mouseenter; dur: 200"
+                        animation__mouseleave="property: material.color; type: color; to: blue; startEvents: mouseleave; dur: 200">
+                        <a-text value="Derecha" position="0 0.3 0.2" scale="0.5 0.5 0.5" align="center"></a-text>
+                      </a-cylinder>
+                    </a-entity>
+                    <!-- camara -->
+                    <a-entity id="rig" position="0 2 0" water-movement>
+                        <a-camera position="0 2 5" look-controls wasd-controls="enabled: false">
+                            <a-cursor raycaster="objects: .clickable" position="0 0 -0.2"></a-cursor>
+                          </a-camera>
+                    </a-entity>
+                  </a-entity>
+
     </a-scene>
 </body>
 
