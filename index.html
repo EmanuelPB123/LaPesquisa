@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mar Hiperrealista en A-Frame con Ciclo Día-Noche</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+    <script>
+        // Componente personalizado para el agua animada que sigue al jugador
+        AFRAME.registerComponent('endless-water', {
+            schema: {
+                color: { type: 'color', default: '#001e0f' },
+                size: { type: 'number', default: 100 }
+            },
+            init: function () {
+                const el = this.el;
+                const data = this.data;
+
+                // Cargar textura de normales del agua
+                const waterNormalMap = new THREE.TextureLoader().load('https://threejs.org/examples/textures/waternormals.jpg');
+                waterNormalMap.wrapS = waterNormalMap.wrapT = THREE.RepeatWrapping;
+
+                // Aumentar la repetición para reducir patrones visibles
+                waterNormalMap.repeat.set(12, 12);
+
+                // Crear geometría con subdivisiones adecuadas
+                const size = data.size;
+                const geometry = new THREE.PlaneGeometry(size, size, 128, 128);
+
+                // Material para agua realista
+                this.material = new THREE.MeshPhysicalMaterial({
+                    color: data.color,
+                    normalMap: waterNormalMap,
+                    normalScale: new THREE.Vector2(3, 3),
+                    transparent: true,
+                    opacity: 0.9,
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    clearcoat: 0.5,
+                    reflectivity: 0.7
+                });
+
+                // Crear mesh y agregarlo a la entidad
+                this.mesh = new THREE.Mesh(geometry, this.material);
+                this.mesh.rotation.x = -Math.PI / 2;
+                el.setObject3D('mesh', this.mesh);
+
+                // Inicializar variables para animación
+                this.time = 0;
+
+                // Referencia a la cámara para seguir su posición
+                this.camera = document.querySelector('a-camera').object3D;
+            },
+            tick: function (time, deltaTime) {
+                // Animar el agua
+                this.time += deltaTime / 1000;
+
+                // Movimiento complejo de la textura normal
+                if (this.material && this.material.normalMap) {
+                    // Múltiples patrones para evitar repetición visible
+                    const t1 = this.time * 0.06;
+                    const t2 = this.time * 0.03;
+
+                    this.material.normalMap.offset.set(
+                        Math.sin(t1) * 0.03 + Math.cos(t2 * 0.7) * 0.02,
+                        Math.cos(t1) * 0.04 + Math.sin(t2 * 0.8) * 0.03
+                    );
+
+                    this.material.normalScale.set(
+                        3 + Math.sin(this.time / 4) * 1,
+                        3 + Math.cos(this.time / 5) * 1
+                    );
+                }
+
+                // Lo más importante: mover el plano del agua para seguir a la cámara
+                if (this.camera && this.mesh) {
+                    // Obtener posición de la cámara
+                    const camPos = this.camera.position;
+
+                    // Mover el agua para seguir a la cámara (solo X y Z)
+                    this.mesh.position.x = Math.floor(camPos.x / 10) * 10;
+                    this.mesh.position.z = Math.floor(camPos.z / 10) * 10;
+                }
+            }
+        });
+
+        // Sistema de mosaico de agua para efecto "infinito"
+        AFRAME.registerComponent('water-tiles', {
+            schema: {
+                tileSize: { type: 'number', default: 200 },
+                tilesPerSide: { type: 'number', default: 3 }
+            },
+            init: function () {
+                const el = this.el;
+                const data = this.data;
+
+                this.tiles = [];
+                this.center = { x: 0, z: 0 };
+                this.tileSize = data.tileSize;
+                this.tilesPerSide = data.tilesPerSide;
+
+                // Crear mosaico inicial de agua
+                this.createWaterTiles();
+
+                // Referencia a la cámara para actualizar los mosaicos
+                this.camera = document.querySelector('a-camera').object3D;
+
+                // Actualizar el centro cuando la cámara se mueva significativamente
+                this.lastUpdatePos = { x: 0, z: 0 };
+            },
+            createWaterTiles: function () {
+                const total = this.tilesPerSide * 2 + 1;
+                const offset = this.tilesPerSide * this.tileSize;
+
+                // Crear grid de agua
+                for (let x = -this.tilesPerSide; x <= this.tilesPerSide; x++) {
+                    for (let z = -this.tilesPerSide; z <= this.tilesPerSide; z++) {
+                        const posX = this.center.x + x * this.tileSize;
+                        const posZ = this.center.z + z * this.tileSize;
+
+                        // Crear elemento de agua
+                        const waterEl = document.createElement('a-entity');
+                        waterEl.setAttribute('endless-water', {
+                            color: '#001e0f',
+                            size: this.tileSize
+                        });
+                        waterEl.setAttribute('position', { x: posX, y: 0, z: posZ });
+
+                        // Añadir al escenario
+                        this.el.appendChild(waterEl);
+
+                        // Guardar referencia
+                        this.tiles.push({
+                            element: waterEl,
+                            x: x,
+                            z: z,
+                            worldX: posX,
+                            worldZ: posZ
+                        });
+                    }
+                }
+            },
+            updateTiles: function (newCenterX, newCenterZ) {
+                // Actualizar las posiciones de los mosaicos según el nuevo centro
+                const halfSize = this.tileSize / 2;
+
+                this.center.x = Math.floor(newCenterX / this.tileSize) * this.tileSize;
+                this.center.z = Math.floor(newCenterZ / this.tileSize) * this.tileSize;
+
+                // Actualizar cada mosaico
+                for (const tile of this.tiles) {
+                    const tileX = this.center.x + tile.x * this.tileSize;
+                    const tileZ = this.center.z + tile.z * this.tileSize;
+
+                    // Actualizar posición del mosaico
+                    tile.element.setAttribute('position', { x: tileX, y: 0, z: tileZ });
+                    tile.worldX = tileX;
+                    tile.worldZ = tileZ;
+                }
+
+                // Actualizar la última posición de actualización
+                this.lastUpdatePos.x = newCenterX;
+                this.lastUpdatePos.z = newCenterZ;
+            },
+            tick: function () {
+                if (!this.camera) return;
+
+                const camPos = this.camera.position;
+                const updateThreshold = this.tileSize / 2;
+
+                // Verificar si la cámara se ha movido lo suficiente para actualizar los mosaicos
+                const dx = Math.abs(camPos.x - this.lastUpdatePos.x);
+                const dz = Math.abs(camPos.z - this.lastUpdatePos.z);
+
+                if (dx > updateThreshold || dz > updateThreshold) {
+                    this.updateTiles(camPos.x, camPos.z);
+                }
+            }
+        });
+
+        // Componente para el movimiento en el agua con efecto de olas
+        AFRAME.registerComponent('water-movement', {
+            init: function () {
+                const el = this.el;
+                this.velocity = new THREE.Vector3(0, 0, 0);
+                this.acceleration = new THREE.Vector3(0, 0, 0);
+                this.keys = {};
+
+                // Escuchar eventos de teclado
+                document.addEventListener('keydown', (evt) => {
+                    this.keys[evt.code] = true;
+                });
+                document.addEventListener('keyup', (evt) => {
+                    this.keys[evt.code] = false;
+                });
+
+                // Movimiento de olas bajo el jugador
+                this.bobTime = 0;
+                this.waves = [
+                    { freq: 0.4, amp: 0.15, phase: 0 },
+                    { freq: 0.8, amp: 0.05, phase: Math.PI / 4 },
+                    { freq: 1.2, amp: 0.03, phase: Math.PI / 6 }
+                ];
+            },
+            tick: function (time, deltaTime) {
+                const el = this.el;
+                const rotation = el.object3D.rotation;
+                const dt = Math.min(deltaTime / 1000, 0.1);
+
+                // Ajustar aceleración según teclas presionadas
+                this.acceleration.set(0, 0, 0);
+
+                // Velocidad normal, no acelerada
+                const speed = 5;
+
+                if (this.keys['KeyW'] || this.keys['ArrowUp']) {
+                    this.acceleration.z = -speed;
+                }
+                if (this.keys['KeyS'] || this.keys['ArrowDown']) {
+                    this.acceleration.z = speed;
+                }
+                if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
+                    this.acceleration.x = -speed;
+                }
+                if (this.keys['KeyD'] || this.keys['ArrowRight']) {
+                    this.acceleration.x = speed;
+                }
+
+                // Aplicar rotación a la aceleración
+                this.acceleration.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
+
+                // Aplicar física simple
+                this.velocity.x += this.acceleration.x * dt;
+                this.velocity.z += this.acceleration.z * dt;
+
+                // Fricción más realista (agua)
+                this.velocity.x *= 0.85;
+                this.velocity.z *= 0.85;
+
+                // Mover la cámara
+                const position = el.object3D.position;
+                position.x += this.velocity.x * dt;
+                position.z += this.velocity.z * dt;
+
+                // Actualizar tiempo de oleaje
+                this.bobTime += dt;
+
+                // Combinar múltiples ondas para el efecto de flotar
+                let yOffset = 2.0; // Altura base sobre el agua
+                for (const wave of this.waves) {
+                    yOffset += Math.sin(this.bobTime * wave.freq + wave.phase) * wave.amp;
+                }
+
+                // Añadir efecto de cabeceo y balanceo basado en la velocidad
+                const pitchAmount = this.velocity.z * 0.01;
+                const rollAmount = -this.velocity.x * 0.01;
+
+                // Aplicar movimiento vertical y rotación
+                position.y = yOffset;
+                el.object3D.rotation.x = pitchAmount * 0.2;
+                el.object3D.rotation.z = rollAmount * 0.2;
+            }
+        });
+
+        // Ciclo día-noche realista con cambios de color del cielo
+        AFRAME.registerComponent('realistic-day-night-cycle', {
+            schema: {
+                cycleDuration: { type: 'number', default: 120 } // duración del ciclo en segundos
+            },
+            init: function () {
+                // Referencias
+                this.sky = document.querySelector('#sky');
+                this.sun = document.querySelector('#sun');
+                this.moon = document.querySelector('#moon');
+                this.ambient = document.querySelector('#ambient-light');
+                
+                // Guardamos las referencias a las entidades de agua en el init
+                this.water = [];
+                document.querySelectorAll('[endless-water]').forEach(waterEl => {
+                    // Esperar a que los componentes se inicialicen completamente
+                    if (waterEl.components && waterEl.components['endless-water']) {
+                        this.water.push(waterEl);
+                    }
+                });
+
+                // Colores para diferentes momentos del día (en formato hexadecimal sin #)
+                this.skyColors = {
+                    night: '000001',      // Noche
+                    dawn: '002a42',       // Amanecer
+                    day: '0096d4',        // Día
+                    sunset: 'fc692d',     // Atardecer
+                    dusk: '171045'        // Anochecer
+                };
+
+                this.waterColors = {
+                    night: '02c9ac',      // Noche en agua
+                    dawn: '002a42',       // Amanecer en agua
+                    day: '002c7d',        // Día en agua
+                    sunset: 'fc692d',     // Atardecer en agua
+                    dusk: '171045'        // Anochecer en agua
+                };
+
+                this.sunColors = {
+                    night: 'FFFF00',      // Noche (no visible)
+                    dawn: 'FF4500',       // Amanecer
+                    day: 'FFFF00',        // Día
+                    sunset: 'FF8C00'      // Atardecer
+                };
+
+                this.moonColors = {
+                    night: 'E6E6FA',      // Noche
+                    day: 'AAAAAA'         // Día (no visible)
+                };
+
+                // Inicializar tiempo del ciclo - podemos empezar en cualquier punto
+                // Para evitar el problema, comenzar a media mañana
+                this.time = this.data.cycleDuration * 0.25; // 25% del ciclo (media mañana)
+                
+                // Necesitamos un contexto para bindear el método
+                const self = this;
+                
+                // Iniciar el starfield después de que la escena esté completamente cargada
+                this.el.sceneEl.addEventListener('loaded', function() {
+                    self.initStarfield();
+                    
+                    // Asegurar que tenemos referencia a todas las entidades de agua
+                    setTimeout(() => {
+                        self.water = [];
+                        document.querySelectorAll('[endless-water]').forEach(waterEl => {
+                            if (waterEl.components && waterEl.components['endless-water']) {
+                                self.water.push(waterEl);
+                            }
+                        });
+                        
+                        // Aplicar colores iniciales basados en la hora de inicio
+                        const initialTime = self.time / self.data.cycleDuration;
+                        self.updateEnvironmentColors(initialTime);
+                        self.updateCelestialBodies(initialTime);
+                        self.updateStars(initialTime);
+                    }, 1000);
+                });
+            },
+            initStarfield: function() {
+                // Crear estrellas aleatorias
+                this.starfield = document.querySelector('#starfield');
+                
+                // Eliminar estrellas existentes si las hay
+                while (this.starfield.firstChild) {
+                    this.starfield.removeChild(this.starfield.firstChild);
+                }
+                
+                // Crear 300 estrellas (aumentado de 200 para mayor visibilidad)
+                for (let i = 0; i < 300; i++) {
+                    let star = document.createElement('a-sphere');
+                    
+                    // Posición aleatoria en una esfera
+                    let phi = Math.random() * Math.PI * 2;
+                    let theta = Math.random() * Math.PI;
+                    let radius = 500; // Radio grande para el cielo
+                    
+                    let x = radius * Math.sin(theta) * Math.cos(phi);
+                    let y = radius * Math.sin(theta) * Math.sin(phi);
+                    let z = radius * Math.cos(theta);
+                    
+                    // Tamaño y color aleatorio para las estrellas
+                    let size = Math.random() * 0.7 + 0.2; // Estrellas ligeramente más grandes
+                    let brightness = Math.random() * 0.5 + 0.5;
+                    let color = `rgb(${255*brightness}, ${255*brightness}, ${255*brightness})`;
+                    
+                    star.setAttribute('position', `${x} ${y} ${z}`);
+                    star.setAttribute('radius', size);
+                    star.setAttribute('color', color);
+                    star.setAttribute('material', 'shader: flat; opacity: 0');
+                    star.setAttribute('class', 'star');
+                    
+                    this.starfield.appendChild(star);
+                }
+            },
+            lerp: function(a, b, t) {
+                // Interpolación lineal para transiciones suaves
+                return a + (b - a) * t;
+            },
+            lerpColor: function(color1, color2, t) {
+                // Interpolar entre dos colores hex
+                const c1 = new THREE.Color(`#${color1}`);
+                const c2 = new THREE.Color(`#${color2}`);
+                
+                const r = this.lerp(c1.r, c2.r, t);
+                const g = this.lerp(c1.g, c2.g, t);
+                const b = this.lerp(c1.b, c2.b, t);
+                
+                return new THREE.Color(r, g, b).getHexString();
+            },
+            tick: function (time, deltaTime) {
+                const dt = deltaTime / 1000;
+                this.time = (this.time + dt) % this.data.cycleDuration;
+                
+                // Normalizar el tiempo a [0,1] donde 0 es el amanecer y 0.5 es el atardecer
+                const normalizedTime = this.time / this.data.cycleDuration;
+                
+                // Posición del sol y la luna
+                this.updateCelestialBodies(normalizedTime);
+                
+                // Actualizar colores del cielo, agua y niebla
+                this.updateEnvironmentColors(normalizedTime);
+                
+                // Actualizar visibilidad de estrellas
+                this.updateStars(normalizedTime);
+            },
+            updateCelestialBodies: function(normalizedTime) {
+                // Calcular posición del sol y la luna
+                const sunAngle = normalizedTime * Math.PI * 2;
+                const moonAngle = (normalizedTime + 0.5) % 1 * Math.PI * 2;
+                
+                // Altura máxima de 300
+                const sunY = 300 * Math.sin(sunAngle);
+                const moonY = 300 * Math.sin(moonAngle);
+                
+                // Posición X/Z para movimiento en arco
+                const sunX = 300 * Math.cos(sunAngle);
+                const moonX = 300 * Math.cos(moonAngle);
+                
+                // Actualizar posiciones
+                this.sun.setAttribute('position', `${sunX} ${sunY} 0`);
+                this.moon.setAttribute('position', `${moonX} ${moonY} 0`);
+                
+                // Calcular intensidades
+                const sunIntensity = Math.max(0, Math.sin(sunAngle));
+                const moonIntensity = 0.2 * Math.max(0, Math.sin(moonAngle));
+                
+                // Actualizar luces
+                this.sun.setAttribute('light', `type: directional; intensity: ${sunIntensity}; castShadow: true`);
+                this.moon.setAttribute('light', `type: directional; intensity: ${moonIntensity}; castShadow: false`);
+                
+                // Luz ambiental - más brillante durante el día, tenue en la noche
+                const ambientIntensity = 0.2 + Math.max(0, Math.sin(sunAngle)) * 0.5;
+                this.ambient.setAttribute('light', `intensity: ${ambientIntensity}`);
+                
+                // Actualizar colores del sol y luna basados en el momento del día
+                let sunColor, moonColor;
+                
+                if (normalizedTime < 0.25) { // Amanecer
+                    const t = normalizedTime / 0.25;
+                    sunColor = this.lerpColor(this.sunColors.dawn, this.sunColors.day, t);
+                } else if (normalizedTime < 0.75) { // Día a atardecer
+                    const t = (normalizedTime - 0.25) / 0.5;
+                    sunColor = this.lerpColor(this.sunColors.day, this.sunColors.sunset, t);
+                } else { // Noche
+                    sunColor = this.sunColors.night;
+                }
+                
+                // Luna más brillante en la noche
+                const isNight = (normalizedTime > 0.75 || normalizedTime < 0.25);
+                moonColor = isNight ? this.moonColors.night : this.moonColors.day;
+                
+                this.sun.setAttribute('color', `#${sunColor}`);
+                this.moon.setAttribute('color', `#${moonColor}`);
+            },
+            updateEnvironmentColors: function(normalizedTime) {
+                let skyColor, waterColor;
+                
+                // Definir puntos clave del ciclo para una transición suave
+                const keyPoints = [
+                    { time: 0.0, sky: this.skyColors.night, water: this.waterColors.night },
+                    { time: 0.1, sky: this.skyColors.dawn, water: this.waterColors.dawn },
+                    { time: 0.2, sky: this.skyColors.day, water: this.waterColors.day },
+                    { time: 0.5, sky: this.skyColors.sunset, water: this.waterColors.sunset },
+                    { time: 0.6, sky: this.skyColors.dusk, water: this.waterColors.dusk },
+                    { time: 0.7, sky: this.skyColors.night, water: this.waterColors.night },
+                    { time: 1.0, sky: this.skyColors.night, water: this.waterColors.night }
+                ];
+                
+                // Encontrar los dos puntos clave entre los que estamos
+                let startPoint = keyPoints[keyPoints.length - 1];
+                let endPoint = keyPoints[0];
+                
+                for (let i = 0; i < keyPoints.length - 1; i++) {
+                    if (normalizedTime >= keyPoints[i].time && normalizedTime < keyPoints[i + 1].time) {
+                        startPoint = keyPoints[i];
+                        endPoint = keyPoints[i + 1];
+                        break;
+                    }
+                }
+                
+                // Calcular el factor de interpolación entre estos dos puntos
+                const segmentDuration = endPoint.time - startPoint.time;
+                const segmentProgress = segmentDuration > 0 ? 
+                    (normalizedTime - startPoint.time) / segmentDuration : 0;
+                
+                // Interpolar colores
+                skyColor = this.lerpColor(startPoint.sky, endPoint.sky, segmentProgress);
+                waterColor = this.lerpColor(startPoint.water, endPoint.water, segmentProgress);
+                
+                // Actualizar colores
+                this.sky.setAttribute('material', `color: #${skyColor}`);
+                
+                // Actualizar color del agua en todos los componentes water
+                if (this.water && this.water.length > 0) {
+                    this.water.forEach(waterEl => {
+                        if (waterEl.components && waterEl.components['endless-water'] && 
+                            waterEl.components['endless-water'].material) {
+                            waterEl.components['endless-water'].material.color.set(`#${waterColor}`);
+                        }
+                    });
+                }
+            },
+            updateStars: function(normalizedTime) {
+                // Estrellas visibles solo durante la noche
+                const stars = document.querySelectorAll('.star');
+                if (!stars || stars.length === 0) return;
+                
+                // Calcular opacidad: visible en la noche, invisible en el día
+                let opacity = 0;
+                
+                if (normalizedTime > 0.7 || normalizedTime < 0.1) {
+                    // Noche completa - estrellas totalmente visibles
+                    opacity = 1;
+                } else if (normalizedTime > 0.6 && normalizedTime <= 0.7) {
+                    // Transición al anochecer - aparecen gradualmente
+                    opacity = (normalizedTime - 0.6) / 0.1;
+                } else if (normalizedTime >= 0.1 && normalizedTime < 0.2) {
+                    // Transición al amanecer - desaparecen gradualmente
+                    opacity = 1 - (normalizedTime - 0.1) / 0.1;
+                }
+                
+                // Aplicar opacidad a todas las estrellas
+                stars.forEach(star => {
+                    // Añadir un parpadeo sutil a las estrellas
+                    const flicker = Math.random() * 0.2 + 0.8;
+                    star.setAttribute('material', `opacity: ${opacity * flicker}`);
+                });
+            }
+        });
+    </script>
+</head>
+
+<body>
+    <a-scene>
+        <!-- Control de cámara para movimiento -->
+        <a-entity id="rig" position="0 2 0" water-movement>
+            <a-camera look-controls wasd-controls="enabled: false"></a-camera>
+        </a-entity>
+
+        <!-- Sistema de mosaicos de agua para "mar infinito" -->
+        <a-entity water-tiles="tileSize: 200; tilesPerSide: 2"></a-entity>
+
+        <!-- Iluminación -->
+        <a-entity id="sun" light="type: directional; intensity: 1; castShadow: true" position="50 50 0" color="#FFFF00" scale="5 5 5"></a-entity>
+        <a-entity id="moon" light="type: directional; intensity: 0; castShadow: false" position="-50 -50 0" color="#E6E6FA" scale="3 3 3"></a-entity>
+        <a-entity id="ambient-light" light="type: ambient; intensity: 0.5" color="#FFFFFF"></a-entity>
+
+        <!-- Cielo -->
+        <a-entity id="sky" geometry="primitive: sphere; radius: 500" material="shader: flat; side: back; color: #87CEEB" scale="1 1 1"></a-entity>
+        
+        <!-- Contenedor para estrellas -->
+        <a-entity id="starfield"></a-entity>
+
+        <!-- Instrucciones -->
+        <a-entity position="0 0.2 -1"
+            text="align: center; width: 2; color: white; value: Usa WASD o flechas para moverte\nMueve el ratón para mirar">
+        </a-entity>
+
+        <!-- Activar ciclo día-noche -->
+        <a-entity realistic-day-night-cycle="cycleDuration: 90"></a-entity>
+    </a-scene>
+</body>
+
+</html>
