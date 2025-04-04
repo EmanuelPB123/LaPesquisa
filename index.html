@@ -213,7 +213,7 @@
                 this.acceleration.set(0, 0, 0);
 
                 // Velocidad normal, no acelerada
-                const speed = 5;
+                const speed = 25;
 
                 if (this.keys['KeyW'] || this.keys['ArrowUp']) {
                     this.acceleration.z = -speed;
@@ -352,7 +352,7 @@
                 }
 
                 // Crear 300 estrellas (aumentado de 200 para mayor visibilidad)
-                for (let i = 0; i < 300; i++) {
+                for (let i = 0; i < 100; i++) {
                     let star = document.createElement('a-sphere');
 
                     // Posición aleatoria en una esfera
@@ -535,159 +535,159 @@
         });
     </script>
 
-<!-- contol ship -->
-  <script>
-    AFRAME.registerComponent('boat-controls', {
-      init: function () {
-        this.boat = document.querySelector('#boat');
-        this.speed = 0;
-        this.targetSpeed = 0;
-        this.maxSpeed = 0.1;
-        this.speedLevels = [
-          -0.1, -0.08, -0.06, -0.04, -0.02,
-          0,
-          0.02, 0.04, 0.06, 0.08, 0.1
-        ];
-        this.currentSpeedIndex = 5;
+    <!-- contol ship -->
+    <script>
+        AFRAME.registerComponent('boat-controls', {
+            init: function () {
+                this.boat = document.querySelector('#boat');
+                this.speed = 0;
+                this.targetSpeed = 0;
+                this.maxSpeed = 0.1;
+                this.speedLevels = [
+                    -0.1, -0.08, -0.06, -0.04, -0.02,
+                    0,
+                    0.02, 0.04, 0.06, 0.08, 0.1
+                ];
+                this.currentSpeedIndex = 5;
 
-        this.rotationSpeed = 0;
-        this.targetRotation = 0;
-        this.maxRotation = 0.6;
-        this.initialY = this.boat.getAttribute('position').y;
-        this.time = 0;
+                this.rotationSpeed = 0;
+                this.targetRotation = 0;
+                this.maxRotation = 0.3;
+                this.initialY = this.boat.getAttribute('position').y;
+                this.time = 0;
 
-        document.querySelector('#forward-button').addEventListener('click', () => {
-          this.currentSpeedIndex = Math.min(this.currentSpeedIndex + 1, this.speedLevels.length - 1);
-          this.targetSpeed = this.speedLevels[this.currentSpeedIndex];
-          this.updateSpeedDisplay();
+                document.querySelector('#forward-button').addEventListener('click', () => {
+                    this.currentSpeedIndex = Math.min(this.currentSpeedIndex + 1, this.speedLevels.length - 1);
+                    this.targetSpeed = this.speedLevels[this.currentSpeedIndex];
+                    this.updateSpeedDisplay();
+                });
+
+                document.querySelector('#backward-button').addEventListener('click', () => {
+                    this.currentSpeedIndex = Math.max(this.currentSpeedIndex - 1, 0);
+                    this.targetSpeed = this.speedLevels[this.currentSpeedIndex];
+                    this.updateSpeedDisplay();
+                });
+
+                document.querySelector('#left-button').addEventListener('click', () => {
+                    this.targetRotation = -this.maxRotation;
+                });
+
+                document.querySelector('#right-button').addEventListener('click', () => {
+                    this.targetRotation = this.maxRotation;
+                });
+            },
+
+            tick: function (time, deltaTime) {
+                if (this.speed !== this.targetSpeed) {
+                    this.speed = this.moveTowards(this.speed, this.targetSpeed, 0.001);
+                }
+
+                if (this.rotationSpeed !== this.targetRotation) {
+                    this.rotationSpeed = this.moveTowards(this.rotationSpeed, this.targetRotation, 0.01);
+                } else {
+                    this.targetRotation = this.moveTowards(this.targetRotation, 0, 0.01);
+                }
+
+                this.time += 0.01;
+                const position = this.boat.getAttribute('position');
+                position.y = this.initialY + Math.sin(this.time) * 0;
+
+                if (this.speed !== 0) {
+                    const rotation = this.boat.getAttribute('rotation');
+                    const angle = rotation.y * Math.PI / 180;
+
+                    position.x += this.speed * Math.sin(angle);
+                    position.z += this.speed * Math.cos(angle);
+
+                    rotation.y += this.rotationSpeed;
+                    rotation.z = -this.rotationSpeed * 6;
+                    this.boat.setAttribute('rotation', rotation);
+                }
+
+                this.boat.setAttribute('position', position);
+            },
+
+            updateSpeedDisplay: function () {
+                const forwardText = document.querySelector('#forward-button').querySelector('a-text');
+                const backwardText = document.querySelector('#backward-button').querySelector('a-text');
+
+                const speedPercent = Math.abs(this.targetSpeed / this.maxSpeed * 100).toFixed(0);
+                if (this.targetSpeed > 0) {
+                    forwardText.setAttribute('value', `Retroceder ${speedPercent}%`);
+                    backwardText.setAttribute('value', 'Avanzar');
+                } else if (this.targetSpeed < 0) {
+                    backwardText.setAttribute('value', `Avanzar ${speedPercent}%`);
+                    forwardText.setAttribute('value', 'Retroceder');
+                } else {
+                    forwardText.setAttribute('value', 'Avanzar');
+                    backwardText.setAttribute('value', 'Retroceder');
+                }
+            },
+
+            moveTowards: function (current, target, step) {
+                if (Math.abs(current - target) <= step) {
+                    return target;
+                }
+                if (current < target) {
+                    return current + step;
+                }
+                return current - step;
+            }
         });
-
-        document.querySelector('#backward-button').addEventListener('click', () => {
-          this.currentSpeedIndex = Math.max(this.currentSpeedIndex - 1, 0);
-          this.targetSpeed = this.speedLevels[this.currentSpeedIndex];
-          this.updateSpeedDisplay();
-        });
-
-        document.querySelector('#left-button').addEventListener('click', () => {
-          this.targetRotation = -this.maxRotation;
-        });
-
-        document.querySelector('#right-button').addEventListener('click', () => {
-          this.targetRotation = this.maxRotation;
-        });
-      },
-
-      tick: function (time, deltaTime) {
-        if (this.speed !== this.targetSpeed) {
-          this.speed = this.moveTowards(this.speed, this.targetSpeed, 0.001);
-        }
-
-        if (this.rotationSpeed !== this.targetRotation) {
-          this.rotationSpeed = this.moveTowards(this.rotationSpeed, this.targetRotation, 0.01);
-        } else {
-          this.targetRotation = this.moveTowards(this.targetRotation, 0, 0.01);
-        }
-
-        this.time += 0.01;
-        const position = this.boat.getAttribute('position');
-        position.y = this.initialY + Math.sin(this.time) * 0;
-
-        if (this.speed !== 0) {
-          const rotation = this.boat.getAttribute('rotation');
-          const angle = rotation.y * Math.PI / 180;
-
-          position.x += this.speed * Math.sin(angle);
-          position.z += this.speed * Math.cos(angle);
-
-          rotation.y += this.rotationSpeed;
-          rotation.z = -this.rotationSpeed * 6;
-          this.boat.setAttribute('rotation', rotation);
-        }
-
-        this.boat.setAttribute('position', position);
-      },
-
-      updateSpeedDisplay: function () {
-        const forwardText = document.querySelector('#forward-button').querySelector('a-text');
-        const backwardText = document.querySelector('#backward-button').querySelector('a-text');
-
-        const speedPercent = Math.abs(this.targetSpeed / this.maxSpeed * 100).toFixed(0);
-        if (this.targetSpeed > 0) {
-          forwardText.setAttribute('value', `Avanzar ${speedPercent}%`);
-          backwardText.setAttribute('value', 'Retroceder');
-        } else if (this.targetSpeed < 0) {
-          backwardText.setAttribute('value', `Retroceder ${speedPercent}%`);
-          forwardText.setAttribute('value', 'Avanzar');
-        } else {
-          forwardText.setAttribute('value', 'Avanzar');
-          backwardText.setAttribute('value', 'Retroceder');
-        }
-      },
-
-      moveTowards: function (current, target, step) {
-        if (Math.abs(current - target) <= step) {
-          return target;
-        }
-        if (current < target) {
-          return current + step;
-        }
-        return current - step;
-      }
-    });
-  </script>
+    </script>
 
     <!-- movement -->
-  <script>
-    AFRAME.registerComponent('boat-side-wobble', {
-      schema: {
-        maxAngle: { type: 'number', default: 5 }, // Ángulo máximo de inclinación en grados
-        speedX: { type: 'number', default: 0.3 }, // Velocidad del bamboleo en el eje X
-        speedZ: { type: 'number', default: 0.3 }  // Velocidad del bamboleo en el eje Z
-      },
+    <script>
+        AFRAME.registerComponent('boat-side-wobble', {
+            schema: {
+                maxAngle: { type: 'number', default: 5 }, // Ángulo máximo de inclinación en grados
+                speedX: { type: 'number', default: 0.3 }, // Velocidad del bamboleo en el eje X
+                speedZ: { type: 'number', default: 0.3 }  // Velocidad del bamboleo en el eje Z
+            },
 
-      init: function () {
-        this.boat = this.el; // Esta componente se aplica directamente al barco
-        this.time = 0;
-        this.originalRotation = {
-          x: this.boat.getAttribute('rotation').x,
-          y: this.boat.getAttribute('rotation').y,
-          z: this.boat.getAttribute('rotation').z
-        };
-      },
+            init: function () {
+                this.boat = this.el; // Esta componente se aplica directamente al barco
+                this.time = 0;
+                this.originalRotation = {
+                    x: this.boat.getAttribute('rotation').x,
+                    y: this.boat.getAttribute('rotation').y,
+                    z: this.boat.getAttribute('rotation').z
+                };
+            },
 
-      tick: function (time, deltaTime) {
-        // Asegurarnos de que deltaTime es un valor válido
-        deltaTime = deltaTime || 16;
+            tick: function (time, deltaTime) {
+                // Asegurarnos de que deltaTime es un valor válido
+                deltaTime = deltaTime || 16;
 
-        // Incrementar el tiempo para las funciones sinusoidales
-        this.time += deltaTime / 1000;
+                // Incrementar el tiempo para las funciones sinusoidales
+                this.time += deltaTime / 1000;
 
-        // Obtener la rotación actual
-        const currentRotation = this.boat.getAttribute('rotation');
+                // Obtener la rotación actual
+                const currentRotation = this.boat.getAttribute('rotation');
 
-        // Calcular el bamboleo usando senos y cosenos desfasados para movimiento más orgánico
-        // Limitar a +/- maxAngle grados (5 por defecto)
-        const wobbleZ = Math.sin(this.time * this.data.speedZ) * this.data.maxAngle;
+                // Calcular el bamboleo usando senos y cosenos desfasados para movimiento más orgánico
+                // Limitar a +/- maxAngle grados (5 por defecto)
+                const wobbleZ = Math.sin(this.time * this.data.speedZ) * this.data.maxAngle;
 
-        // También añadimos un ligero cabeceo (eje X) para más realismo
-        const wobbleX = Math.cos(this.time * this.data.speedX) * (this.data.maxAngle * 0.5);
+                // También añadimos un ligero cabeceo (eje X) para más realismo
+                const wobbleX = Math.cos(this.time * this.data.speedX) * (this.data.maxAngle * 0.5);
 
-        // Preservar la rotación Y (dirección controlada por usuario)
-        // mientras añadimos bamboleo a X (cabeceo) y Z (balanceo)
-        const newRotation = {
-          x: wobbleX,
-          y: currentRotation.y, // Mantener dirección controlada por el usuario
-          z: wobbleZ
-        };
+                // Preservar la rotación Y (dirección controlada por usuario)
+                // mientras añadimos bamboleo a X (cabeceo) y Z (balanceo)
+                const newRotation = {
+                    x: wobbleX,
+                    y: currentRotation.y, // Mantener dirección controlada por el usuario
+                    z: wobbleZ
+                };
 
-        // Si el boat-controls está manipulando la rotación Z, podemos mezclarlo
-        // En lugar de sobreescribir completamente, podríamos añadir nuestro wobble:
-        // newRotation.z = currentRotation.z + wobbleZ;
+                // Si el boat-controls está manipulando la rotación Z, podemos mezclarlo
+                // En lugar de sobreescribir completamente, podríamos añadir nuestro wobble:
+                // newRotation.z = currentRotation.z + wobbleZ;
 
-        this.boat.setAttribute('rotation', newRotation);
-      }
-    });
-  </script>
+                this.boat.setAttribute('rotation', newRotation);
+            }
+        });
+    </script>
 </head>
 
 <body>
@@ -726,44 +726,75 @@
             <a-box width="2" height="2" depth="2" color="#000fff" position="5 0 5" material="roughness: 1">
 
                 <a-entity id="boat" position="0 1 -5" boat-controls boat-side-wobble="maxAngle: 5" boat-compass>
-                    <a-box width="3" height="1" depth="6" color="#8B4513" position="0 0 0"></a-box>
-                    <a-box width="2" height="0.5" depth="4" color="#DEB887" position="0 0.75 0"></a-box>
-                    <a-cylinder height="5" radius="0.1" color="#8B4513" position="0 3 0"></a-cylinder>
-                    <a-plane width="2" height="4" color="white" position="0 3 0" rotation="0 90 0"></a-plane>
+                    <!-- ship -->
+                    <a-entity rotation="0 180 0" position="0 0 5">
+                        <!-- <a-box width="3" height="1" depth="6" color="#8B4513" position="0 0 0"></a-box>
+                        <a-box width="2" height="0.5" depth="4" color="#DEB887" position="0 0.75 0"></a-box>
+                        <a-cylinder height="5" radius="0.1" color="#8B4513" position="0 3 0"></a-cylinder>
+                        <a-plane width="2" height="4" color="white" position="0 3 0" rotation="0 90 0"></a-plane> -->
+                        <!-- Objetos exportados -->
+                        <a-box position="0 1.5 0" rotation="0 0 0" scale="3 3 5" color="#dedede" ></a-box>
+                        <a-box position="0 0.18 -3.2" rotation="45 0 0" scale="2.5 5 3" color="#dedede" ></a-box>
+                        <a-box position="0 0 0" rotation="0 0 0" scale="6 0.1 20" color="#854000" ></a-box>
+                        <a-cylinder position="-1.8 5.5 -1" rotation="90 0 0" scale="0.5 1.5 0.5" color="#e40625" ></a-cylinder>
+                        <a-cylinder position="1.8 5.5 -1" rotation="90 0 0" scale="0.5 1.5 0.5" color="#e40625" ></a-cylinder>
+                        <a-box position="0 3 0" rotation="0 0 0" scale="5.5 0.1 6" color="#00b36e" ></a-box>
+                        <a-box position="0 0 10" rotation="0 45 0" scale="4.25 0.3 4.25" color="#854000" ></a-box>
+                        <a-box position="3 0 -4" rotation="0 0 0" scale="0.2 2 28" color="#ff4000" ></a-box>
+                        <a-box position="-3 0 -4" rotation="0 0 0" scale="0.2 2 28" color="#ff4000" ></a-box>
+                        <a-box position="1.25 3.5 0" rotation="0 90 0" scale="4 1.5 0.1" color="#dedede" ></a-box>
+                        <a-box position="-1.25 3.5 0" rotation="0 90 0" scale="4 1.5 0.1" color="#dedede" ></a-box>
+                        <a-box position="0 4.5 -2" rotation="0 0 0" scale="2.5 3 0.1" color="#dedede" ></a-box>
+                        <a-box position="-1.5 0 11.5" rotation="0 45 0" scale="0.2 4 4.3" color="#ff4000" ></a-box>
+                        <a-box position="1.5 0 11.5" rotation="0 -45 0" scale="0.2 4 4.3" color="#ff4000" ></a-box>
+                        <a-box position="0 1 0" rotation="0 0 0" scale="1 1 1" color="#d93378" ></a-box>
+                        <a-box position="0 3.5 2" rotation="0 0 0" scale="2.5 1 0.1" color="#dedede" ></a-box>
+                        <a-box position="0 6.2 0" rotation="0 0 0" scale="5 0.4 5" color="#00b36e" ></a-box>
+                        <a-box position="0 0 -14" rotation="0 0 0" scale="6 0.2 8" color="#8e3106" ></a-box>
+                        <a-box position="-2.8 2.5 -10" rotation="0 0 0" scale="0.4 5 0.4" color="#ffffff" ></a-box>
+                        <a-box position="2.8 2.5 -10" rotation="0 0 0" scale="0.4 5 0.4" color="#ffffff" ></a-box>
+                        <a-box position="0 5 -10" rotation="0 0 0" scale="5.8 0.3 0.3" color="#ffa200" ></a-box>
+                        <a-cylinder position="0 3 13" rotation="0 0 0" scale="0.1 10 0.1" color="#3a99e9" ></a-cylinder>
+                    </a-entity>
+
                     <!-- controles -->
-                    <a-entity position="0 1.5 2">
-                      <a-cylinder id="forward-button" position="-0.5 0 0" height="0.3" radius="0.3" color="green"
-                        class="clickable" cursor-listener
-                        animation__mouseenter="property: material.color; type: color; to: #2ECC71; startEvents: mouseenter; dur: 200"
-                        animation__mouseleave="property: material.color; type: color; to: green; startEvents: mouseleave; dur: 200">
-                        <a-text value="Avanzar" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
-                      </a-cylinder>
-                      <a-cylinder id="backward-button" position="0.5 0 0" height="0.3" radius="0.3" color="red" class="clickable"
-                        cursor-listener
-                        animation__mouseenter="property: material.color; type: color; to: #E74C3C; startEvents: mouseenter; dur: 200"
-                        animation__mouseleave="property: material.color; type: color; to: red; startEvents: mouseleave; dur: 200">
-                        <a-text value="Retroceder" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
-                      </a-cylinder>
-                      <a-cylinder id="left-button" position="-0.5 0.5 0" height="0.3" radius="0.3" color="blue" class="clickable"
-                        cursor-listener
-                        animation__mouseenter="property: material.color; type: color; to: #3498DB; startEvents: mouseenter; dur: 200"
-                        animation__mouseleave="property: material.color; type: color; to: blue; startEvents: mouseleave; dur: 200">
-                        <a-text value="Izquierda" position="0 0.3 0.2" scale="0.5 0.5 0.5" align="center"></a-text>
-                      </a-cylinder>
-                      <a-cylinder id="right-button" position="0.5 0.5 0" height="0.3" radius="0.3" color="blue" class="clickable"
-                        cursor-listener
-                        animation__mouseenter="property: material.color; type: color; to: #3498DB; startEvents: mouseenter; dur: 200"
-                        animation__mouseleave="property: material.color; type: color; to: blue; startEvents: mouseleave; dur: 200">
-                        <a-text value="Derecha" position="0 0.3 0.2" scale="0.5 0.5 0.5" align="center"></a-text>
-                      </a-cylinder>
+                    <a-entity position="0 4.3 3.5" scale="0.4 0.4 0.4">
+                        <a-cylinder id="forward-button" position="-0.5 0.5 0" height="0.3" radius="0.3" color="green"
+                            class="clickable" cursor-listener 
+                            animation__mouseenter="property: material.color; type: color; to: #E74C3C; startEvents: mouseenter; dur: 200"
+                            animation__mouseleave="property: material.color; type: color; to: gree; startEvents: mouseleave; dur: 200">
+                            <a-text value="RETROCEDER" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
+                        </a-cylinder>
+                        <a-cylinder id="backward-button" position="0.5 0.5 0" height="0.3" radius="0.3" color="red"
+                            class="clickable" cursor-listener
+                            animation__mouseenter="property: material.color; type: color; to: #2ECC71; startEvents: mouseenter; dur: 200"
+                            animation__mouseleave="property: material.color; type: color; to: red; startEvents: mouseleave; dur: 200">
+                            <a-text value="AVANZAR" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
+                        </a-cylinder>
+                        <a-cylinder id="left-button" position="1.5 0.5 0" height="0.3" radius="0.3" color="blue"
+                            class="clickable" cursor-listener
+                            animation__mouseenter="property: material.color; type: color; to: #3498DB; startEvents: mouseenter; dur: 200"
+                            animation__mouseleave="property: material.color; type: color; to: blue; startEvents: mouseleave; dur: 200">
+                            <a-text value="DER" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
+                        </a-cylinder>
+                        <a-cylinder id="right-button" position="-1.5 0.5 0" height="0.3" radius="0.3" color="blue"
+                            class="clickable" cursor-listener
+                            animation__mouseenter="property: material.color; type: color; to: #3498DB; startEvents: mouseenter; dur: 200"
+                            animation__mouseleave="property: material.color; type: color; to: blue; startEvents: mouseleave; dur: 200">
+                            <a-text value="IZQ" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
+                        </a-cylinder>
+                    </a-entity>
+                    <!-- luces -->
+                    <a-entity>
+                        <a-entity light="type: spot; intensity: 4; angle: 30; penumbra: 1" position="0 8 -7.8"></a-entity>
                     </a-entity>
                     <!-- camara -->
-                    <a-entity id="rig" position="0 2 0" water-movement>
-                        <a-camera position="0 2 5" look-controls wasd-controls="enabled: false">
+                    <a-entity id="rig" position="0 0 0" water-movement>
+                        <a-camera position="0 3.4 4.8" look-controls wasd-controls="enabled: false">
                             <a-cursor raycaster="objects: .clickable" position="0 0 -0.2"></a-cursor>
-                          </a-camera>
+                        </a-camera>
                     </a-entity>
-                  </a-entity>
+                </a-entity>
 
     </a-scene>
 </body>
