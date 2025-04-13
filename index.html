@@ -771,20 +771,20 @@
                         position="0 1 -1"></a-box>
 
                     <!-- cont -->
-                    <a-text id="valorTotal" value="Total: 0" position="-1 3 -4" color="black"></a-text>
-                    <a-plane id="resetBtn" color="red" width="1" height="0.5" position="1 3 -4">
+                    <a-text id="valorTotal" value="Total: 0" position="0.5 5.7 3" scale="0.5 0.5 0.5" color="black"></a-text>
+                    <a-plane id="resetBtn" color="red" width="1" height="0.5" position="0.7 5.5 3" scale="0.5 0.5 0.5">
                         <a-text value="Reset" align="center" position="0 0 0.1" color="white"></a-text>
                     </a-plane>
 
                     <!-- controles -->
                     <a-entity position="0 4.3 3.5" scale="0.4 0.4 0.4">
-                        <a-cylinder id="forward-button" position="-0.5 0.5 0" height="0.3" radius="0.3" color="green"
+                        <a-cylinder id="forward-button" position="-0.5 0.5 0" height="0.3" radius="0.3" color="red"
                             class="clickable" cursor-listener
                             animation__mouseenter="property: material.color; type: color; to: #E74C3C; startEvents: mouseenter; dur: 200"
                             animation__mouseleave="property: material.color; type: color; to: gree; startEvents: mouseleave; dur: 200">
                             <a-text value="RETROCEDER" position="0 0 0.5" scale="0.5 0.5 0.5" align="center"></a-text>
                         </a-cylinder>
-                        <a-cylinder id="backward-button" position="0.5 0.5 0" height="0.3" radius="0.3" color="red"
+                        <a-cylinder id="backward-button" position="0.5 0.5 0" height="0.3" radius="0.3" color="green"
                             class="clickable" cursor-listener
                             animation__mouseenter="property: material.color; type: color; to: #2ECC71; startEvents: mouseenter; dur: 200"
                             animation__mouseleave="property: material.color; type: color; to: red; startEvents: mouseleave; dur: 200">
@@ -808,13 +808,14 @@
                         <a-entity light="type: spot; intensity: 4; angle: 30; penumbra: 1"
                             position="0 8 -7.8"></a-entity>
                     </a-entity>
+                                              <a-text id="statusText" value="Esperando interacción..." position="-2 5.7 3" color="#FFFFFF" scale="0.5 0.5 0.5"
+                            width="6"></a-text>
                     <!-- camara -->
                     <a-entity id="Rig" position="0 0 0" water-movement>
                         <a-camera position="0 3.4 4.8" look-controls wasd-controls="enabled: false"> <!-- 3.4 -->
                             <a-cursor raycaster="objects: .clickable" position="0 0 -0.2"></a-cursor>
                             <a-cursor  position="0 0 -0.8"></a-cursor>
-                            <a-text id="statusText" value="Esperando interacción..." position="-3 2 -3" color="#FFFFFF"
-                            width="6"></a-text>
+
                         </a-camera>
                     </a-entity>
                 </a-entity>
