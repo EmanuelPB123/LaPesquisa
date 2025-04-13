@@ -10,7 +10,7 @@ window.onload = () => {
     const minPerGroup = 5;
     const maxPerGroup = 20;
     const itemSpacing = 5;
-    const groupArea = 50;
+    const groupArea = 5000;
 
     let containerOffsetY = 0.3;
     const maxAllowedInside = 20;
