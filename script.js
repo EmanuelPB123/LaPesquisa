@@ -10,15 +10,147 @@ window.onload = () => {
     const minPerGroup = 5;
     const maxPerGroup = 20;
     const itemSpacing = 5;
-    const groupArea = 500;
+    const groupArea = 50;
 
     let containerOffsetY = 0.3;
-    let movedCount = 0;
-    const maxAllowedInside = 10;
+    const maxAllowedInside = 20;
+    const hiddenGroups = new Set();
+    let isProcessingClick = false;
 
-    const movedGroups = new Set();
-    const originalPositions = {};
-    let totalValue = 0;
+    // Nuevas variables para el conteo de centollas
+    let totalPiezas = 0;
+    let totalKilos = 0;
+
+    // Función para crear un cubo de pesca con datos de centolla
+    function createFishingCube() {
+        const cube = document.createElement('a-box');
+        cube.setAttribute('color', '#4287f5');
+        cube.setAttribute('width', '0.5');
+        cube.setAttribute('height', '0.5');
+        cube.setAttribute('depth', '0.5');
+
+        // Calcular la posición en una cuadrícula 3D dentro del contenedor
+        const currentCubes = contenedorAmarillo.querySelectorAll('.fishing-cube').length;
+        const gridSize = 4; // 4x4 grid en cada nivel
+        const level = Math.floor(currentCubes / (gridSize * gridSize));
+        const remainingCubes = currentCubes % (gridSize * gridSize);
+        const row = Math.floor(remainingCubes / gridSize);
+        const col = remainingCubes % gridSize;
+
+        // Calcular las coordenadas dentro del contenedor amarillo
+        const xOffset = (col - (gridSize - 1) / 2) * 0.6;
+        const yOffset = level * 0.6 + 0.3;
+        const zOffset = (row - (gridSize - 1) / 2) * 0.6;
+
+        cube.setAttribute('position', `${xOffset} ${yOffset} ${zOffset}`);
+        cube.setAttribute('class', 'fishing-cube');
+        
+        // Datos de centolla
+        const numCentollas = Math.floor(Math.random() * 81);
+        const pesoPromedio = (Math.random() * 2 + 1).toFixed(2);
+        const pesoTotal = (numCentollas * pesoPromedio).toFixed(2);
+        
+        cube.setAttribute('data-centollas', numCentollas);
+        cube.setAttribute('data-peso', pesoTotal);
+        
+        return cube;
+    }
+
+    function updateTotalDisplay() {
+        valorTotalText.setAttribute('value', `Total: ${totalPiezas} centollas - ${totalKilos.toFixed(2)} kg`);
+    }
+
+    function handleSphereClick(event) {
+        if (isProcessingClick) return;
+        isProcessingClick = true;
+        
+        setTimeout(() => {
+            isProcessingClick = false;
+        }, 300);
+        
+        const currentCubes = contenedorAmarillo.querySelectorAll('.fishing-cube').length;
+        
+        if (currentCubes >= maxAllowedInside) {
+            statusText.setAttribute('value', 'Contenedor lleno! Máximo 20 peces');
+            return;
+        }
+
+        const groupEntity = event.target.parentElement;
+        const groupId = groupEntity.id;
+        
+        if (hiddenGroups.has(groupId)) return;
+        
+        groupEntity.setAttribute('visible', false);
+        hiddenGroups.add(groupId);
+        
+        const fishingCube = createFishingCube();
+        contenedorAmarillo.appendChild(fishingCube);
+        
+        const numCentollas = parseInt(fishingCube.getAttribute('data-centollas'));
+        const peso = parseFloat(fishingCube.getAttribute('data-peso'));
+        
+        totalPiezas += numCentollas;
+        totalKilos += peso;
+        
+        updateTotalDisplay();
+        statusText.setAttribute('value', 
+            `Captura: ${numCentollas} centollas - ${peso} kg (${currentCubes + 1}/20)`);
+    }
+
+    let isProcessingContainerClick = false;
+
+    contenedorAmarillo.addEventListener('click', () => {
+        if (isProcessingContainerClick) return;
+        isProcessingContainerClick = true;
+        
+        setTimeout(() => {
+            isProcessingContainerClick = false;
+        }, 300);
+
+        const fishingCubes = contenedorAmarillo.querySelectorAll('.fishing-cube');
+        if (fishingCubes.length > 0) {
+            const lastCube = fishingCubes[fishingCubes.length - 1];
+            
+            const numCentollas = parseInt(lastCube.getAttribute('data-centollas'));
+            const peso = parseFloat(lastCube.getAttribute('data-peso'));
+            
+            lastCube.parentNode.removeChild(lastCube);
+            
+            if (hiddenGroups.size > 0) {
+                const groupId = Array.from(hiddenGroups)[0];
+                const group = document.getElementById(groupId);
+                if (group) {
+                    group.setAttribute('visible', true);
+                    hiddenGroups.delete(groupId);
+                }
+            }
+            
+            const remainingCubes = fishingCubes.length - 1;
+            statusText.setAttribute('value', 
+                `Liberado: ${numCentollas} centollas - ${peso} kg (${remainingCubes}/20)`);
+        }
+    });
+
+    resetBtn.addEventListener('click', () => {
+        if (isProcessingClick) return;
+        isProcessingClick = true;
+        
+        setTimeout(() => {
+            isProcessingClick = false;
+        }, 300);
+
+        containerOffsetY = 0.3;
+        hiddenGroups.clear();
+        totalPiezas = 0;
+        totalKilos = 0;
+        updateTotalDisplay();
+        
+        const fishingCubes = contenedorAmarillo.querySelectorAll('.fishing-cube');
+        fishingCubes.forEach(cube => cube.parentNode.removeChild(cube));
+        const groups = scene.querySelectorAll('a-entity');
+        groups.forEach(group => group.setAttribute('visible', true));
+        statusText.setAttribute('value', `Contador reseteado`);
+    });
 
     for (let g = 0; g < totalGroups; g++) {
         const itemsInGroup = Math.floor(Math.random() * (maxPerGroup - minPerGroup + 1)) + minPerGroup;
@@ -32,20 +164,22 @@ window.onload = () => {
             groupClone.setAttribute('id', groupId);
             groupClone.setAttribute('visible', true);
 
-            const value = Math.floor(Math.random() * 29) + 5; // valor aleatorio 5–30
-            groupClone.dataset.valor = value;
+            const sphere = document.createElement('a-sphere');
+            sphere.setAttribute('color', 'red');
+            sphere.setAttribute('radius', '0.25');
+            sphere.setAttribute('position', '0 0 0');
+            sphere.setAttribute('class', 'clickable');
+            sphere.addEventListener('click', handleSphereClick);
+            
+            const box = document.createElement('a-box');
+            box.setAttribute('color', 'blue');
+            box.setAttribute('depth', '1');
+            box.setAttribute('height', '1');
+            box.setAttribute('width', '1');
+            box.setAttribute('position', '0 -50 0');
 
-            baseGroup.childNodes.forEach(child => {
-                if (child.tagName) {
-                    const elementClone = child.cloneNode();
-                    if (elementClone.getAttribute('geometry')?.primitive === 'box') {
-                        elementClone.setAttribute('position', `0 -50 0`);
-                    } else if (elementClone.getAttribute('geometry')?.primitive === 'sphere') {
-                        elementClone.setAttribute('position', `0 0 0`);
-                    }
-                    groupClone.appendChild(elementClone);
-                }
-            });
+            groupClone.appendChild(box);
+            groupClone.appendChild(sphere);
 
             const cols = Math.ceil(Math.sqrt(itemsInGroup));
             const row = Math.floor(i / cols);
@@ -56,74 +190,8 @@ window.onload = () => {
             const posX = groupCenterX + localOffsetX;
             const posZ = groupCenterZ + localOffsetZ;
 
-            const initialPos = { x: posX, y: 0, z: posZ };
-            originalPositions[groupId] = initialPos;
-
             groupClone.setAttribute('position', `${posX} 0 ${posZ}`);
-
-            groupClone.addEventListener('click', () => {
-                if (movedCount >= maxAllowedInside || movedGroups.has(groupId)) {
-                    return;
-                }
-
-                // ✅ Mover dentro del contenedor y fijar posición relativa
-                contenedorAmarillo.appendChild(groupClone);
-                groupClone.setAttribute('position', `0 ${containerOffsetY} 0`);
-
-                containerOffsetY += 0;
-                movedCount++;
-                movedGroups.add(groupId);
-
-                groupClone.childNodes.forEach(child => {
-                    if (child.tagName) {
-                        if (child.getAttribute('geometry')?.primitive === 'box') {
-                            child.setAttribute('position', `0 0 0`);
-                        } else if (child.getAttribute('geometry')?.primitive === 'sphere') {
-                            child.setAttribute('position', `0 -0.6 0`);
-                        }
-                    }
-                });
-
-                const val = parseInt(groupClone.dataset.valor || "0");
-                totalValue += val;
-                valorTotalText.setAttribute('value', `Total: ${totalValue}`);
-
-                statusText.setAttribute('value', `Grupo ${g}, Item ${i} movido (${movedCount}/${maxAllowedInside})`);
-            });
-
             scene.appendChild(groupClone);
         }
     }
-
-    contenedorAmarillo.addEventListener('click', () => {
-        movedGroups.forEach(groupId => {
-            const groupEntity = document.getElementById(groupId);
-            if (groupEntity && originalPositions[groupId]) {
-                const pos = originalPositions[groupId];
-                scene.appendChild(groupEntity); // ✅ Regresar a escena
-                groupEntity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-
-                groupEntity.childNodes.forEach(child => {
-                    if (child.tagName) {
-                        if (child.getAttribute('geometry')?.primitive === 'box') {
-                            child.setAttribute('position', `0 -50 0`);
-                        } else if (child.getAttribute('geometry')?.primitive === 'sphere') {
-                            child.setAttribute('position', `0 0 0`);
-                        }
-                    }
-                });
-            }
-        });
-
-        movedGroups.clear();
-        containerOffsetY = 0.3;
-        movedCount = 0;
-        statusText.setAttribute('value', `Cubos azules regresaron a su lugar (Total sigue igual)`);
-    });
-
-    resetBtn.addEventListener('click', () => {
-        totalValue = 0;
-        valorTotalText.setAttribute('value', `Total: 0`);
-        statusText.setAttribute('value', `Contador reseteado`);
-    });
 };
